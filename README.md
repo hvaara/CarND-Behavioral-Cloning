@@ -128,6 +128,7 @@ I use a convolutional model. The first 5 layers are convolutional layers:
 - Output layer.
 
 #### 3. Creation of the Training Set & Training Process
+The dataset contains color images of 320x160 pixels with labels for steering angles. Our task is to make a model that can output steering angles from new images.
 
 I used the provided learning data, and I also collected training data of my own. I drove 4 laps in each direction, 8 laps total. An example of a training example
 
