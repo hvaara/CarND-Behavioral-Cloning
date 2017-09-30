@@ -7,7 +7,7 @@ from sklearn.model_selection import train_test_split
 
 # Run for 20 epochs, but as we'll see, checkpoint every time model
 # loss improves.
-EPOCHS = 20
+EPOCHS = 200
 
 # Read all samples into array using a hash to store tha data with keys
 # filename: path to image
@@ -71,11 +71,19 @@ def generator(samples, batch_size=32):
             yield sklearn.utils.shuffle(X_train, y_train)
 
 # Data stored over multiple sessions saved in different directories.
-samples = read_samples(['data', 'data2', 'data3'])
+data_dirs = []
+# Original data, and two sessions on track 1 (flat with water)
+data_dirs += ['data', 'data2', 'data3']
+# Two other sessions on track 1
+data_dirs += ['data2-2', 'data3-2']
+# Two sessions on track 2 (hills)
+data_dirs += ['data-track2-1', 'data-track2-2']
+samples = read_samples(data_dirs)
 samples = augment_samples(samples)
+np.random.shuffle(samples)
 train_samples, validation_samples = train_test_split(samples, test_size=0.2)
-train_generator = generator(train_samples, batch_size=32)
-validation_generator = generator(validation_samples, batch_size=32)
+train_generator = generator(train_samples)
+validation_generator = generator(validation_samples)
 
 # Imports for model.
 from keras.models import Sequential
@@ -98,9 +106,9 @@ model.add(Convolution2D(36,5,5,subsample=(2,2),activation="relu"))
 model.add(Convolution2D(48,5,5,subsample=(2,2),activation="relu"))
 model.add(Convolution2D(64,3,3,activation="relu"))
 model.add(Convolution2D(64,3,3,activation="relu"))
-model.add(Dropout(.2))
 model.add(Flatten())
-model.add(Dense(200, activation="relu"))
+model.add(Dense(120, activation="relu"))
+model.add(Dropout(.5))
 model.add(Dense(20, activation="relu"))
 model.add(Dense(5, activation="relu"))
 model.add(Dense(1))
@@ -109,7 +117,8 @@ model.compile(loss='mse', optimizer='adam')
 checkpointer = ModelCheckpoint(filepath='model.h5', verbose=1, \
         save_best_only=True)
 # Use to continue learning from checkpointed or final model.
-#model = load_model('model.h5')
+if os.path.isfile('model.h5'):
+    model = load_model('model.h5')
 model.fit_generator(train_generator, samples_per_epoch=len(train_samples), \
         validation_data=validation_generator, \
         nb_val_samples=len(validation_samples), nb_epoch=EPOCHS, \
@@ -118,6 +127,6 @@ model.fit_generator(train_generator, samples_per_epoch=len(train_samples), \
 # The final model is saved, but it's better to use the checkpointed model
 # because it's only saved when we have an improvement in validation loss.
 # The final model might be worse than the checkpointed version for some
-# reasons. For example due to overfitting or to some randomness when
-# updating the weights for the model.
+# reasons. For example due to overfitting or because the last model is worse
+# than one of the previous models.
 model.save('final.h5')
